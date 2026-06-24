@@ -166,3 +166,29 @@ See [`../examples/`](../examples/) for end-to-end walkthroughs:
 - `02-bug-bounty-workflow.md` — full HackerOne engagement
 - `03-identity-fabric-mapping.md` — M365 deep enum
 - `04-secret-hunting.md` — leaked-credential workflow
+
+## Local dashboard (optional)
+
+A zero-dependency (stdlib-only) localhost web UI ships alongside the skill at
+[`../skills/offensive-osint/scripts/dashboard.py`](../skills/offensive-osint/scripts/dashboard.py).
+It wraps the bundled helpers in a browser console — no Flask, no pip install.
+
+```bash
+python3 skills/offensive-osint/scripts/dashboard.py          # http://127.0.0.1:8765
+python3 skills/offensive-osint/scripts/dashboard.py --open   # also open a browser tab
+python3 skills/offensive-osint/scripts/dashboard.py --port 9000
+```
+
+Three tabs:
+
+- **Secret Scan** — point it at a repo/file path; runs `secret_scan.py` recursively
+  (binaries, `.git`, `node_modules` skipped) and renders findings with severity/category
+  aggregation, live filtering, and JSON/CSV export.
+- **Paste & Scan** — paste JS, configs, env dumps, or response bodies; scanned fully
+  **offline** against the 48-pattern catalog.
+- **HackerOne Ref** — queries the public disclosed-report corpus via `h1_reference.py`
+  (this tab is the only one that makes outbound HTTPS requests).
+
+**Safety:** binds to `127.0.0.1` only by default. The scan API reads local files the
+operator points it at, so binding to a non-loopback address prints a warning — only do
+that on a trusted, isolated host.
