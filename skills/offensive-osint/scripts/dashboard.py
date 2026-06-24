@@ -196,6 +196,20 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_static(self, path: str, content_type: str) -> None:
+        try:
+            with open(path, "rb") as fh:
+                body = fh.read()
+        except OSError:
+            self._send_json({"ok": False, "error": "not found"}, status=404)
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "max-age=86400")
+        self.end_headers()
+        self.wfile.write(body)
+
     def _read_json_body(self) -> dict:
         length = int(self.headers.get("Content-Length", 0) or 0)
         if length <= 0:
@@ -211,6 +225,8 @@ class Handler(BaseHTTPRequestHandler):
             self._send_html(PAGE_HTML)
         elif self.path == "/api/health":
             self._send_json({"ok": True, "service": "claude-osint-dashboard"})
+        elif self.path == "/font/display.woff2":
+            self._send_static(os.path.join(SCRIPT_DIR, "assets", "archivo-black.woff2"), "font/woff2")
         else:
             self._send_json({"ok": False, "error": "not found"}, status=404)
 
@@ -241,6 +257,13 @@ PAGE_HTML = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>claude / osint · recon.live</title>
 <style>
+  /* bundled display face (served locally by the dashboard — no CDN). Falls back
+     to Arial Black / system if the route is unavailable (e.g. file:// use). */
+  @font-face {
+    font-family: "Archivo Black";
+    src: url("/font/display.woff2") format("woff2");
+    font-weight: 900; font-style: normal; font-display: swap;
+  }
   :root {
     --bg:      #08060a;
     --bg-grid: rgba(255, 40, 60, 0.035);
@@ -260,7 +283,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
     --med:     #ffce4a;
     --low:     #5fa8ff;
     --mono: "SFMono-Regular", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-    --disp: "Arial Black", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --disp: "Archivo Black", "Arial Black", system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   * { box-sizing: border-box; }
   html { scrollbar-color: var(--red-dim) var(--bg); }
@@ -276,7 +299,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
     min-height: 100vh;
   }
   a { color: inherit; text-decoration: none; }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 26px; }
+  .wrap { max-width: 2200px; margin: 0 auto; padding: 0 clamp(24px, 5vw, 120px); }
   .micro { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
   .red { color: var(--red); }
   .dot { color: var(--red); }
@@ -304,6 +327,13 @@ PAGE_HTML = r"""<!DOCTYPE html>
   .wordmark h1 .o::after { content:""; position:absolute; left:0; right:6px; bottom:-2px; height:3px;
                            background: var(--red); box-shadow: 0 0 14px var(--red); }
   .sub { display: flex; align-items: center; gap: 9px; letter-spacing: 0.22em; }
+  .cta { align-self: flex-start; margin-top: 6px; display: inline-flex; align-items: center; gap: 8px;
+         background: var(--red); color: #1a0407; border: 0; font-family: var(--mono); font-weight: 800;
+         font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; padding: 11px 20px; cursor: pointer;
+         transition: filter .15s, box-shadow .15s, transform .05s; }
+  .cta:hover { filter: brightness(1.1); box-shadow: 0 0 20px var(--red-glow); }
+  .cta:active { transform: translateY(1px); }
+  .lead { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; max-width: 70ch; line-height: 1.5; }
   .hero .meta { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 7px; padding-top: 4px; }
   .pill { align-self: flex-end; display: inline-flex; align-items: center; gap: 7px; color: var(--red);
           border: 1px solid var(--red-dim); padding: 4px 11px; font-size: 10.5px; letter-spacing: 0.16em;
@@ -334,9 +364,9 @@ PAGE_HTML = r"""<!DOCTYPE html>
   .colhead .nm { color: var(--white); letter-spacing: 0.14em; text-transform: uppercase; font-size: 11px; }
   .acard { position: relative; border: 1px solid var(--line); background: linear-gradient(160deg, var(--panel), var(--bg));
            padding: 14px 15px; margin-bottom: 12px; transition: border-color .18s, transform .12s, background .18s; cursor: default; }
-  .acard::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background: var(--red-dim); opacity:.0; transition: opacity .18s; }
-  .acard:hover { border-color: var(--red-dim); transform: translateX(2px); background: linear-gradient(160deg, var(--panel-2), var(--bg)); }
-  .acard:hover::before { opacity: 1; }
+  .acard::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background: var(--red-dim); opacity:.3; }
+  /* reference tiles, not buttons: a faint border lift only, no slide/glow affordance */
+  .acard:hover { border-color: rgba(255,60,80,0.2); }
   .acard .t { color: var(--white); font-weight: 700; font-size: 14px; letter-spacing: -0.01em; }
   .acard .d { color: var(--muted); font-size: 11px; margin-top: 5px; }
   .acard .tag { position: absolute; top: 11px; right: 12px; color: var(--muted-2); font-size: 9.5px; letter-spacing: 0.1em;
@@ -456,6 +486,41 @@ PAGE_HTML = r"""<!DOCTYPE html>
   .spin::after { content: "▍"; animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
 
+  /* designed keyboard focus — visible only for keyboard users, not mouse clicks */
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible {
+    outline: 2px solid var(--red); outline-offset: 2px;
+  }
+  .tabs button:focus-visible { outline-offset: -2px; }
+  .acard:focus-within { border-color: var(--red-dim); }
+
+  /* ---- tactical motion: scanline sweep + boot reveal (reduced-motion safe) ---- */
+  .scan { position: fixed; inset: 0; pointer-events: none; z-index: 60; overflow: hidden; }
+  .scan::before { content:""; position: absolute; left: 0; right: 0; top: 0; height: 160px;
+    background: linear-gradient(180deg, transparent, rgba(255,37,54,0.05) 46%, rgba(255,90,99,0.07) 50%, transparent);
+    animation: sweep 7.5s linear infinite; }
+  @keyframes sweep { 0% { transform: translateY(-170px); } 100% { transform: translateY(100vh); } }
+  @keyframes rise { from { opacity: 0; transform: translateY(11px); } to { opacity: 1; transform: none; } }
+  .wrap > * { animation: rise .5s cubic-bezier(.16,1,.3,1) both; }
+  .wrap > *:nth-child(2){ animation-delay:.05s }  .wrap > *:nth-child(3){ animation-delay:.10s }
+  .wrap > *:nth-child(4){ animation-delay:.15s }  .wrap > *:nth-child(5){ animation-delay:.20s }
+  .wrap > *:nth-child(6){ animation-delay:.25s }  .wrap > *:nth-child(7){ animation-delay:.30s }
+  .wrap > *:nth-child(8){ animation-delay:.35s }  .wrap > *:nth-child(9){ animation-delay:.40s }
+  .wrap > *:nth-child(10){ animation-delay:.45s }
+
+  /* honor reduced-motion: kill pulses, blinks, fades, sweep, boot reveal, transitions */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+
+  /* back-to-scan affordance — appears once you scroll past the console */
+  .backscan { position: fixed; right: 20px; bottom: 20px; z-index: 70; background: var(--red); color: #1a0407;
+              border: 0; font-family: var(--mono); font-weight: 800; font-size: 11px; letter-spacing: 0.1em;
+              text-transform: uppercase; padding: 11px 16px; cursor: pointer; opacity: 0; transform: translateY(12px);
+              pointer-events: none; transition: opacity .2s, transform .2s, box-shadow .15s, filter .15s;
+              box-shadow: 0 6px 22px rgba(0,0,0,0.55); }
+  .backscan.show { opacity: 1; transform: none; pointer-events: auto; }
+  .backscan:hover { box-shadow: 0 0 22px var(--red-glow); filter: brightness(1.08); }
+
   @media (max-width: 880px) {
     .arsenal { grid-template-columns: repeat(2, 1fr); }
     .stats { grid-template-columns: repeat(3, 1fr); }
@@ -463,9 +528,39 @@ PAGE_HTML = r"""<!DOCTYPE html>
     .hero { flex-wrap: wrap; } .hero .meta { margin-left: 0; text-align: left; align-items: flex-start; }
     .statusbar .ctr { display: none; }
   }
+  /* phones: one breakpoint stood between this and shipping on mobile */
+  @media (max-width: 560px) {
+    html, body { overflow-x: hidden; }
+    * { min-width: 0; }                 /* flex children must be allowed to shrink */
+    .sub { display: block; }            /* subtitle wraps as text, not a rigid flex line */
+    .sechead .micro { flex-basis: 100%; }   /* section flags drop to their own line */
+    .wrap { padding: 0 16px; }
+    .statusbar { gap: 10px; }
+    /* drop the left coordinates seg AND the long SYS seg — they can't fit a phone */
+    .statusbar > div:nth-child(2), .statusbar #systag { display: none; }
+    .statusbar .seg.micro { font-size: 9px; letter-spacing: 0.08em; }
+    .hero > * { min-width: 0; }
+    .wordmark, .meta { flex-basis: 100%; }
+    .wordmark h1 { font-size: clamp(30px, 12vw, 48px); overflow-wrap: anywhere; }
+    .sub { flex-wrap: wrap; overflow-wrap: anywhere; }
+    .sechead { flex-wrap: wrap; gap: 8px 12px; }
+    .sechead .micro { font-size: 9px; min-width: 0; overflow-wrap: anywhere; }
+    .arsenal { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat { border-right: 0; border-bottom: 1px solid var(--line); }
+    .tabs { flex-wrap: wrap; }
+    .tabs button { flex: 1 1 42%; font-size: 10px; padding: 10px 8px; border: 1px solid var(--line); border-bottom: 0; }
+    .row { flex-direction: column; align-items: stretch; }
+    input.grow { min-width: 0; width: 100%; }
+    .row .go, .row button.go { width: 100%; }
+    .fld { width: 100% !important; min-width: 0 !important; }
+    .footstrip { flex-wrap: wrap; gap: 6px 12px; }
+    .backscan { right: 12px; bottom: 12px; }
+  }
 </style>
 </head>
 <body>
+<div class="scan" aria-hidden="true"></div>
 <div class="wrap">
 
   <!-- STATUS BAR -->
@@ -475,7 +570,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
     <div class="grow"></div>
     <div class="seg ctr micro" id="buildbar"># BUILD:STABLE · SHA:A7F3C91 · NO TELEMETRY</div>
     <div class="grow"></div>
-    <div class="seg micro" id="systag">SYS://RECON.LIVE · 0XC0DE</div>
+    <div class="seg micro" id="systag">SYS://RECON.LIVE · UP <span id="uptime">00:00:00</span></div>
     <div class="corner">+</div>
   </div>
 
@@ -493,6 +588,7 @@ PAGE_HTML = r"""<!DOCTYPE html>
     <div class="wordmark">
       <h1><span class="c">claude</span> <span class="slash">/</span> <span class="o">osint</span></h1>
       <div class="sub micro"><span class="dot">●</span> External Red-Team Recon · Bug-Bounty Arsenal</div>
+      <button class="cta" id="runScanCta" type="button">▸ Run a scan</button>
     </div>
     <div class="meta">
       <span class="pill"><span class="bl"></span> Operational</span>
@@ -502,12 +598,65 @@ PAGE_HTML = r"""<!DOCTYPE html>
     </div>
   </header>
 
-  <!-- ARSENAL HEADER -->
-  <div class="sechead">
-    <span class="bar"></span><span class="title">Recon Arsenal</span>
-    <span class="micro">// 4 Domains&nbsp;&nbsp;// 12 Surfaces&nbsp;&nbsp;// 9 Validators</span>
+  <!-- ================= RUN A SCAN (primary action) ================= -->
+  <div class="sechead" id="console-anchor">
+    <span class="bar"></span><span class="title">Run a Scan</span>
+    <span class="micro">// point it at a path, or paste a blob — runs locally, nothing leaves this box</span>
     <span class="grow"></span>
-    <span class="micro">0X01&nbsp;&nbsp;Load · Enum · Validate · Chain</span>
+    <span class="micro" id="consoleflag">0X01&nbsp;&nbsp;Scan · Paste · H1-Ref</span>
+  </div>
+
+  <div class="console">
+    <nav class="tabs">
+      <button data-tab="scan" class="active">▸ Secret Scan</button>
+      <button data-tab="paste">▸ Paste &amp; Scan</button>
+      <button data-tab="h1">▸ HackerOne Ref</button>
+    </nav>
+    <div class="panelbox">
+
+      <section class="panel active" id="tab-scan">
+        <p class="lead">Scan a local repo or file for leaked secrets — 48 patterns, recursive, offline.</p>
+        <div class="row">
+          <input type="text" id="scanPath" class="grow" placeholder="/path/to/repo-or-file   ·   recursive · binaries & .git skipped">
+          <button class="go" id="scanBtn">Scan path</button>
+        </div>
+        <div id="scanOut"></div>
+      </section>
+
+      <section class="panel" id="tab-paste">
+        <p class="lead">Paste any text — JS, configs, env dumps, response bodies. Checked locally against the same 48 patterns.</p>
+        <textarea id="pasteText" placeholder="Paste JS, configs, env dumps, response bodies…  48 secret patterns checked locally — nothing leaves this machine."></textarea>
+        <div class="row" style="margin-top:10px"><button class="go" id="pasteBtn">Scan text</button></div>
+        <div id="pasteOut"></div>
+      </section>
+
+      <section class="panel" id="tab-h1">
+        <p class="lead">Look up disclosed HackerOne reports for techniques and impact framing. This tab reaches the network.</p>
+        <div class="row">
+          <label class="fld">Mode
+            <select id="h1Mode"><option value="top-voted">Top voted</option><option value="top-bounty">Top bounty</option></select>
+          </label>
+          <label class="fld" style="flex:1; min-width:200px">Keyword (optional)
+            <input type="text" id="h1Query" placeholder="SSRF · OAuth bypass · IDOR"></label>
+          <label class="fld">Program (optional)
+            <input type="text" id="h1Program" placeholder="shopify"></label>
+          <label class="fld" style="width:90px">Pages
+            <input type="text" id="h1Pages" value="3"></label>
+          <label class="fld" style="align-self:flex-end"><button class="go" id="h1Btn">Query</button></label>
+        </div>
+        <div class="note">↑ This tab makes outbound HTTPS requests to hackerone.com. The two scan tabs are fully offline.</div>
+        <div id="h1Out"></div>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- ================= CAPABILITY MAP (reference, not interactive) ================= -->
+  <div class="sechead">
+    <span class="bar"></span><span class="title">Capability Map</span>
+    <span class="micro">// reference — what these skills cover · not interactive</span>
+    <span class="grow"></span>
+    <span class="micro">0X02&nbsp;&nbsp;4 Domains · 12 Surfaces · 9 Validators</span>
   </div>
 
   <!-- ARSENAL GRID -->
@@ -571,57 +720,8 @@ PAGE_HTML = r"""<!DOCTYPE html>
     <span>Ship It ◂</span>
   </div>
 
-  <!-- ================= LIVE CONSOLE ================= -->
-  <div class="sechead">
-    <span class="bar"></span><span class="title">Live Console</span>
-    <span class="micro">// interactive · stdlib · localhost</span>
-    <span class="grow"></span>
-    <span class="micro" id="consoleflag">0X02&nbsp;&nbsp;Scan · Paste · H1-Ref</span>
-  </div>
-
-  <div class="console">
-    <nav class="tabs">
-      <button data-tab="scan" class="active">▸ Secret Scan</button>
-      <button data-tab="paste">▸ Paste &amp; Scan</button>
-      <button data-tab="h1">▸ HackerOne Ref</button>
-    </nav>
-    <div class="panelbox">
-
-      <section class="panel active" id="tab-scan">
-        <div class="row">
-          <input type="text" id="scanPath" class="grow" placeholder="/path/to/repo-or-file   ·   recursive · binaries & .git skipped">
-          <button class="go" id="scanBtn">Scan path</button>
-        </div>
-        <div id="scanOut"></div>
-      </section>
-
-      <section class="panel" id="tab-paste">
-        <textarea id="pasteText" placeholder="Paste JS, configs, env dumps, response bodies…  48 secret patterns checked locally — nothing leaves this machine."></textarea>
-        <div class="row" style="margin-top:10px"><button class="go" id="pasteBtn">Scan text</button></div>
-        <div id="pasteOut"></div>
-      </section>
-
-      <section class="panel" id="tab-h1">
-        <div class="row">
-          <label class="fld">Mode
-            <select id="h1Mode"><option value="top-voted">Top voted</option><option value="top-bounty">Top bounty</option></select>
-          </label>
-          <label class="fld" style="flex:1; min-width:200px">Keyword (optional)
-            <input type="text" id="h1Query" placeholder="SSRF · OAuth bypass · IDOR"></label>
-          <label class="fld">Program (optional)
-            <input type="text" id="h1Program" placeholder="shopify"></label>
-          <label class="fld" style="width:90px">Pages
-            <input type="text" id="h1Pages" value="3"></label>
-          <label class="fld" style="align-self:flex-end"><button class="go" id="h1Btn">Query</button></label>
-        </div>
-        <div class="note">↑ This tab makes outbound HTTPS requests to hackerone.com. The two scan tabs are fully offline.</div>
-        <div id="h1Out"></div>
-      </section>
-
-    </div>
-  </div>
-
 </div>
+<button class="backscan" id="backScan" type="button" aria-label="Jump back to scan">▸ scan</button>
 
 <script>
 const $ = (s, r=document) => r.querySelector(s);
@@ -634,6 +734,38 @@ $$('.tabs button').forEach(b => b.onclick = () => {
   b.classList.add('active');
   $('#tab-' + b.dataset.tab).classList.add('active');
 });
+
+function activateTab(name) {
+  $$('.tabs button').forEach(x => x.classList.remove('active'));
+  $$('.panel').forEach(x => x.classList.remove('active'));
+  const btn = document.querySelector(`.tabs button[data-tab=${name}]`);
+  if (btn) btn.classList.add('active');
+  const pan = $('#tab-' + name);
+  if (pan) pan.classList.add('active');
+}
+
+// Jump to the console, select Secret Scan, focus the input. Shared by the
+// hero CTA and the floating back-to-scan button.
+function goToScan() {
+  activateTab('scan');
+  $('#console-anchor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => $('#scanPath').focus(), 350);
+}
+const runCta = $('#runScanCta');
+if (runCta) runCta.onclick = goToScan;
+
+// Floating back-to-scan button: reveal once the user scrolls past the console.
+const backScan = $('#backScan');
+const consoleAnchor = $('#console-anchor');
+if (backScan && consoleAnchor) {
+  backScan.onclick = goToScan;
+  const toggleBackScan = () => {
+    const past = window.scrollY > consoleAnchor.offsetTop + 320;
+    backScan.classList.toggle('show', past);
+  };
+  window.addEventListener('scroll', toggleBackScan, { passive: true });
+  toggleBackScan();
+}
 
 async function postJSON(url, payload) {
   const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
@@ -778,6 +910,15 @@ $('#h1Btn').onclick = async () => {
   } catch (e) { $('#h1Out').innerHTML = `<div class="err">✗ ${esc(e.message)}</div>`; }
   btn.disabled = false; btn.textContent = 'Query';
 };
+
+// ---- live uptime ticker (status bar) ----
+const _t0 = Date.now();
+const _pad = n => String(n).padStart(2, '0');
+setInterval(() => {
+  const s = Math.floor((Date.now() - _t0) / 1000);
+  const el = $('#uptime');
+  if (el) el.textContent = `${_pad(Math.floor(s/3600))}:${_pad(Math.floor(s%3600/60))}:${_pad(s%60)}`;
+}, 1000);
 </script>
 </body>
 </html>
