@@ -50,6 +50,8 @@ claude-osint/
 
 Each skill directory is self-contained. Drop into `~/.claude/skills/` and Claude auto-triggers on relevant phrases.
 
+> **Mirrored from [Claude-BugHunter](https://github.com/elementalsouls/Claude-BugHunter).** That repo is the canonical monorepo home for all skills; this repo re-exports the two recon skills. **Edit them in BugHunter, not here** — maintainers re-sync with `scripts/sync-from-bughunter.sh`, and a CI guard (`.github/workflows/sync-check.yml`) fails on drift.
+
 ---
 
 ## Skill Index
@@ -285,8 +287,6 @@ flowchart TD
 # Install both skills (one-time, after clone)
 git clone https://github.com/elementalsouls/Claude-OSINT.git
 cd Claude-OSINT
-chmod +x ./scripts/sync-skill-content.sh
-./scripts/sync-skill-content.sh
 mkdir -p ~/.claude/skills
 cp -r skills/osint-methodology ~/.claude/skills/
 cp -r skills/offensive-osint   ~/.claude/skills/

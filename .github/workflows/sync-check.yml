@@ -1,0 +1,33 @@
+name: Skill sync check
+
+# Claude-BugHunter is the canonical home for the two recon skills this repo
+# re-exports (offensive-osint, osint-methodology). This guard fails if our copies
+# drift from BugHunter's — either because someone edited them here (edit them in
+# BugHunter instead) or because BugHunter advanced and we haven't re-synced.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '17 6 * * 1'   # weekly Monday — catch upstream drift even without a PR
+  workflow_dispatch:
+
+jobs:
+  drift:
+    name: Mirrored skills match Claude-BugHunter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout claude-osint
+        uses: actions/checkout@v4
+
+      - name: Checkout Claude-BugHunter (canonical source)
+        uses: actions/checkout@v4
+        with:
+          repository: elementalsouls/Claude-BugHunter
+          ref: main          # pin to a release tag / SHA for reproducible releases
+          path: _bughunter
+
+      - name: Verify the 2 mirrored skills are in sync
+        run: bash scripts/sync-from-bughunter.sh --from "$GITHUB_WORKSPACE/_bughunter" --check
