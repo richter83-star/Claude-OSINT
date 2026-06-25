@@ -286,14 +286,19 @@ flowchart TD
 ### With Claude Code
 
 ```bash
-# Install both skills (one-time, after clone)
 git clone https://github.com/elementalsouls/Claude-OSINT.git
 cd Claude-OSINT
-mkdir -p ~/.claude/skills
-cp -r skills/osint-methodology ~/.claude/skills/
-cp -r skills/offensive-osint   ~/.claude/skills/
-ls ~/.claude/skills/
+bash scripts/install.sh        # copies both skills + records an install manifest
 ```
+
+The installer is idempotent (skips a skill already present and identical) and writes
+a manifest so you can later run `bash scripts/install.sh --uninstall` to remove exactly
+this bundle's footprint. Prefer a plain copy? `cp -r skills/* ~/.claude/skills/` still works.
+
+> **Safe alongside [Claude-BugHunter](https://github.com/elementalsouls/Claude-BugHunter).**
+> These two recon skills are shared with that bundle (canonically maintained there). Both
+> installers record a manifest, so installing both is idempotent and `--uninstall` keeps any
+> skill the other bundle still owns — uninstalling one never breaks the other.
 
 Then, in any Claude Code session, ask an OSINT question — both skills auto-load and trigger on relevant phrases (50+ trigger phrases each).
 
