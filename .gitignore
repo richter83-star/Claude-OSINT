@@ -56,3 +56,9 @@ node_modules/
 # Local sync artifacts
 *.local.md
 *.synced
+
+# Workspace layout: the sibling Claude-BugHunter repo lives here in this checkout.
+# Never let `git add -A` sweep it (or stale self-nested skill dirs) into a commit.
+/Bug Hunter/
+skills/offensive-osint/offensive-osint/
+skills/osint-methodology/osint-methodology/

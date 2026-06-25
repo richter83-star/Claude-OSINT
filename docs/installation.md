@@ -12,10 +12,8 @@ Claude Code looks for skills in `~/.claude/skills/` by default.
 git clone https://github.com/elementalsouls/Claude-OSINT.git
 cd Claude-OSINT
 
-# Optional: populate full SKILL.md content from bundled full-skills (one-time after clone)
-./scripts/sync-skill-content.sh
-
 # Copy both skills into your local Claude Code skills directory
+# (skills/*/SKILL.md ship with full content — no populate step needed)
 mkdir -p ~/.claude/skills
 cp -r skills/osint-methodology ~/.claude/skills/
 cp -r skills/offensive-osint   ~/.claude/skills/
@@ -29,12 +27,9 @@ mkdir -p ~/.claude/skills
 
 ln -sf ~/.local/share/Claude-OSINT/skills/osint-methodology ~/.claude/skills/osint-methodology
 ln -sf ~/.local/share/Claude-OSINT/skills/offensive-osint   ~/.claude/skills/offensive-osint
-
-cd ~/.local/share/Claude-OSINT
-./scripts/sync-skill-content.sh   # one-time
 ```
 
-Then `git -C ~/.local/share/Claude-OSINT pull && ./scripts/sync-skill-content.sh` periodically.
+Then `git -C ~/.local/share/Claude-OSINT pull` periodically to stay current.
 
 ### Verify install
 
@@ -116,23 +111,11 @@ The skill's `triggers:` list controls auto-activation. If your prompt's wording 
 - Try rephrasing with a phrase from the SKILL.md `triggers:` list.
 - If your phrasing is a common practitioner term, [open an issue](https://github.com/elementalsouls/Claude-OSINT/issues) to add it.
 
-### "I get the structured-outline SKILL.md, not the full content"
-
-By default we ship structured-outline SKILL.md files (small, fast to load). To get full inline content:
-
-```bash
-cd <repo>
-./scripts/sync-skill-content.sh
-```
-
-This populates `skills/*/SKILL.md` with the full content from `docs/full-skills/*.SKILL.full.md`.
-
 ### "Skill is too large for my model's context"
 
 Both skills together are ~5,500 lines / ~150 KB. This fits comfortably in modern Claude context windows (200K+). If you're using an older model with smaller context:
 
-- Use the structured-outline SKILL.md files (don't run sync-skill-content.sh).
-- Or attach only one skill at a time, depending on the task.
+- Attach only one skill at a time, depending on the task.
 - Or run a model with larger context (Claude Sonnet 4.6+, Opus 4.6+).
 
 ### "I want to filter the skill content"
