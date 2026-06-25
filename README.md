@@ -2,7 +2,7 @@
 
 # claude-osint
 
-> 2 paired Claude skills · **90+ recon modules** · 48 secret-regex patterns · 80+ dorks · 9 read-only credential validators · 27 attack-path templates · 4,600+ lines of structured tradecraft. Drop-in `SKILL.md` files that turn Claude into a god-mode external recon operator for authorized red-team and bug-bounty engagements.
+> 2 paired Claude skills · **90+ recon modules** · 48 secret-regex patterns · 80+ dorks · 9 read-only credential validators · 27 attack-path templates · 6,000+ lines of structured tradecraft. Drop-in `SKILL.md` files that turn Claude into a god-mode external recon operator for authorized red-team and bug-bounty engagements.
 
 Built by **[ElementalSoul](https://github.com/elementalsouls)** — GenAI Security Research.
 
@@ -28,7 +28,7 @@ Built by **[ElementalSoul](https://github.com/elementalsouls)** — GenAI Securi
 
 Drop both into your Claude environment and it behaves like a senior recon analyst: it knows the techniques, the tooling, the edge cases, and the escalation paths — and it stays in scope.
 
-~4,600 lines of structured tradecraft · 96.9% PASS on a 32-prompt self-evaluation · ~85–90% practitioner coverage for the recon phase of authorized engagements.
+~6,000 lines of structured tradecraft · 96.9% PASS on a 32-prompt self-evaluation · ~85–90% practitioner coverage for the recon phase of authorized engagements.
 
 ---
 
@@ -37,11 +37,13 @@ Drop both into your Claude environment and it behaves like a senior recon analys
 ```
 claude-osint/
 ├── skills/
-│   ├── osint-methodology/SKILL.md     # how to think  (455 lines)
+│   ├── osint-methodology/SKILL.md     # how to think  (~1,700 lines)
 │   └── offensive-osint/
-│       ├── SKILL.md                   # what to reach for (4,168 lines)
-│       ├── scripts/secret_scan.py     # stdlib-only secret scanner
-│       └── scripts/h1_reference.py    # HackerOne disclosed-reports reference agent
+│       ├── SKILL.md                   # what to reach for (lean index, ~400 lines)
+│       ├── references/                # 15 modular reference files (~3,900 lines)
+│       ├── scripts/secret_scan.py     # stdlib-only 48-pattern secret scanner
+│       ├── scripts/h1_reference.py    # HackerOne disclosed-reports reference agent
+│       └── scripts/dashboard.py       # local recon console (stdlib web UI)
 ├── docs/                              # architecture · coverage · install · usage
 ├── examples/                          # 4 end-to-end engagement walk-throughs
 ├── tests/smoke-test-prompts.md        # 32-prompt self-evaluation

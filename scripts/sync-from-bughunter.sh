@@ -57,7 +57,10 @@ for s in "${SKILLS[@]}"; do
     exit 2
   fi
   if [ "$CHECK_ONLY" = true ]; then
-    if diff -rq "$SRC" "$DST" >/dev/null 2>&1; then
+    # Exclude python caches: sync strips them from the destination, so a stray
+    # __pycache__ in the source would otherwise report spurious drift (locally;
+    # CI checkouts never have one).
+    if diff -rq --exclude=__pycache__ --exclude='*.pyc' "$SRC" "$DST" >/dev/null 2>&1; then
       echo "  ✓ $s: in sync"
     else
       echo "  ✗ $s: DRIFT (run without --check to re-sync, or edit in BugHunter)"
